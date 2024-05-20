@@ -13,3 +13,5 @@ def start(message):
 if __name__ == "__main__":
     logging.info("Бот запускается")
     bot.polling()
+
+#ТЕСТИРУЮ GIT В PYCHARM
