@@ -3,6 +3,10 @@ import telebot
 from keyboard import menu, helpkey
 from secret import TOKEN
 from config import MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS, LOGS
+from database import Database
+
+db = Database()
+db.create_database()
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -14,6 +18,7 @@ def start(message):
     chat_id = message.chat.id
     user_name = message.from_user.first_name
     logging.info(f"{user_name} | {chat_id} - новый пользователь")
+    db.add_user(chat_id)
     bot.send_message(chat_id,
                      f"<b>Привет {user_name}👋, это бот который поможет тебе в путешествиях.</b>\n\n"
                      f"Для более подробной информации нужно написать /help.\n"
@@ -52,7 +57,5 @@ def support_of_сreators(message):
                      f"Discord - <code>fallan.</code>\n"
                      f"Telegram - <code>@fallangg</code>\n",
                      parse_mode='html',reply_markup=menu)
-
-
 
 bot.polling()
