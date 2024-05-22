@@ -4,6 +4,7 @@ from keyboard import menu, helpkey
 from secret import TOKEN
 from config import MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS, LOGS
 from database import Database
+from city import city
 
 db = Database()
 db.create_database()
@@ -57,5 +58,24 @@ def support_of_сreators(message):
                      f"Discord - <code>fallan.</code>\n"
                      f"Telegram - <code>@fallangg</code>\n",
                      parse_mode='html',reply_markup=menu)
+
+@bot.message_handler(commands=['travel_help'])
+def travel_help(message):
+    chat_id = message.chat.id
+    user_name = message.from_user.first_name
+    logging.info(f"{user_name} | {chat_id} - выполнил команду travel_help")
+
+    check_city = db.get_city(chat_id)
+    if check_city == None:
+        bot.send_message(chat_id, 'Напиши город, о достопримечательностях которого ты хочешь услышать.')
+        bot.register_next_step_handler(message, check_town)
+
+    bot.send_message(chat_id,
+                     f"<b>Привет {user_name}👋, это бот который поможет тебе в путешествиях.</b>\n\n"
+                     f"Для более подробной информации нужно написать /help.\n"
+                     f"А для начала взаимодействия с ботом по вашему путешествию напишите /travel_help.\n",
+                     parse_mode='html',reply_markup=menu)
+
+
 
 bot.polling()
