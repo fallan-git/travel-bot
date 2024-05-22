@@ -2,10 +2,12 @@ import logging
 import telebot
 from keyboard import menu, helpkey
 from secret import TOKEN
-from config import MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS
+from config import MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS, LOGS
 
 bot = telebot.TeleBot(TOKEN)
-logging.basicConfig(level=logging.DEBUG)
+
+logging.basicConfig(filename=LOGS, level=logging.DEBUG,
+                    format="%(asctime)s FILE: %(filename)s IN: %(funcName)s MESSAGE: %(message)s", filemode="w")
 
 @bot.message_handler(commands=['start'])
 def start(message):
