@@ -52,6 +52,5 @@ def support_of_сreators(message):
                      parse_mode='html',reply_markup=menu)
 
 
-if __name__ == "__main__":
-    logging.info("Бот запускается")
-    bot.polling()
+
+bot.polling()
