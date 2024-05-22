@@ -1,6 +1,6 @@
 import telebot
 import logging
-from config import TOKEN
+from config
 
 bot = telebot.TeleBot(TOKEN)
 logging.basicConfig(level=logging.DEBUG)
