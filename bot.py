@@ -1,7 +1,7 @@
 import logging
 import telebot
 import requests
-from keyboard import menu, helpkey
+from keyboard import menu, helpkey, token_small
 from secret import TOKEN, folder_id
 from config import (MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS, LOGS, IAM_TOKEN_PATH, TOKENIZE_URL,
                     GPT_MODEL, GPT_URL)
@@ -45,9 +45,10 @@ def help(message):
     bot.send_message(chat_id,
                      f"Данный бот 🤖 использует технологии <b>YaGPT</b>.\n\n"
                      f"/support_of_сreators - команда благодаря которой можно получить информацию о создателях бота.\n"
-                     f"/travel_help - получить информацию о достопримечательностях города и о том как сегодня одеться.\n"
+                     f"/travel_help - получить информацию о достопримечательностях города.\n"
                      f"/town_history - узнать историю города\n"
-                     f"/set_town - команда для указания нужного вам города, без неё не работают другие команды.\n\n"
+                     f"/set_town - команда для указания нужного вам города, без неё не работают другие команды.\n"
+                     f"/get_weather - узнать погоду в городе\n"
                      f"Ограничение по пользователям бота - {MAX_USERS}\n"
                      f"Ограничение токенов для пользователя - {MAX_USER_GPT_TOKENS}\n"
                      f"Ограничение токенов в ответе GPT - {MAX_GPT_TOKENS}\n",
@@ -73,11 +74,11 @@ def support_of_сreators(message):
 
 @bot.message_handler(commands=['set_town'])
 def get_town(message):
-    chat_id = message.from_user.id
+    chat_id = message.chat.id
     user_name = message.from_user.first_name
-    logging.info(f"{user_name} | {chat_id} - выполнил команду travel_help")
+    logging.info(f"{user_name} | {chat_id} - выполнил команду set_town")
 
-    bot.send_message(chat_id, 'Напиши <b>город</b>, о достопримечательностях 🏛 которого ты хочешь услышать.',
+    bot.send_message(chat_id, 'Напиши <b>город</b>, о котором мы будем говорить в дальнейшем..',
                      parse_mode='html',reply_markup=menu)
     bot.register_next_step_handler(message, check_town_in_csv)
 
@@ -104,17 +105,27 @@ def handle_message(message):
                                   "Напишите команду /travel_help и укажите город заново.",
                      parse_mode='html',reply_markup=menu)
         
-        
-@bot.message_handler(commands=['get_weather'])
+
+@bot.message_handler(commands=['travel_help'])
 def get_weather(message):
-    chat_id = message.from_user.id
-    PROMPT = [{'role': 'system', 'text': f'Расскажи о погоде на ближайшую неделю в городе под названием '}]
+    chat_id = message.chat.id
     city = db.get_city(chat_id)
     if city == None:
-
-    otvet = ask_gpt(city, PROMPT)
-    bot.send_message(chat_id, f"<b>{otvet}</b>",
+        bot.send_message(chat_id, "<b>Вы не выбрали город, напишите /set_town!</b>😥\n",
                      parse_mode='html',reply_markup=menu)
+        return
+    PROMPT = [{'role': 'system', 'text': f'Расскажи о главных достопримечательностях в городе под названием '}]
+    user_tokens = db.get_tokens(chat_id)
+    if user_tokens < 120:
+        bot.send_message(chat_id, "<b>У вас нету токенов.</b>😥\n"
+                                  "Вам доступны команды: /help, /get_weather и /support_of_сreators",
+                     parse_mode='html',reply_markup=token_small)
+        return
+    success, otvet, tokens_in_answer = ask_gpt(city, PROMPT)
+    if success:
+        bot.send_message(chat_id, f"<b>{otvet}</b>",
+                         parse_mode='html',reply_markup=menu)
+        db.update_tokens(tokens_in_answer, chat_id)
 
 def count_gpt_tokens(messages):
     headers = {

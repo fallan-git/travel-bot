@@ -14,3 +14,8 @@ help4 = types.KeyboardButton('/town_history🌆')
 help5 = types.KeyboardButton('/get_weather🌦')
 helpkey.add(help2, help5)
 helpkey.add(help1, help3, help4)
+
+token_small = types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
+token1 = types.KeyboardButton('/support_of_сreators👨‍💻')
+token2 = types.KeyboardButton('/get_weather🌦')
+token_small.add(token1, token2)
