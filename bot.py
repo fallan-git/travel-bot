@@ -4,7 +4,8 @@ from keyboard import menu, helpkey
 from secret import TOKEN
 from config import MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS, LOGS
 from database import Database
-from city import city
+from gpt import ask_gpt
+import csv
 
 db = Database()
 db.create_database()
@@ -32,7 +33,7 @@ def help(message):
     user_name = message.from_user.first_name
     logging.info(f"{user_name} | {chat_id} - выполнил команду help")
     bot.send_message(chat_id,
-                     f"Данный бот использует технологии <b>YaGPT</b>.\n\n"
+                     f"Данный бот 🤖 использует технологии <b>YaGPT</b>.\n\n"
                      f"/support_of_сreators - команда благодаря которой можно получить информацию о создателях бота.\n"
                      f"/travel_help - получить информацию о достопримечательностях города и о том как сегодня одеться.\n"
                      f"/town_history - узнать историю города\n\n"
@@ -60,22 +61,43 @@ def support_of_сreators(message):
                      parse_mode='html',reply_markup=menu)
 
 @bot.message_handler(commands=['travel_help'])
-def travel_help(message):
-    chat_id = message.chat.id
+def get_town(message):
+    chat_id = message.from_user.id
     user_name = message.from_user.first_name
     logging.info(f"{user_name} | {chat_id} - выполнил команду travel_help")
 
-    check_city = db.get_city(chat_id)
-    if check_city == None:
-        bot.send_message(chat_id, 'Напиши город, о достопримечательностях которого ты хочешь услышать.')
-        bot.register_next_step_handler(message, check_town)
-
-    bot.send_message(chat_id,
-                     f"<b>Привет {user_name}👋, это бот который поможет тебе в путешествиях.</b>\n\n"
-                     f"Для более подробной информации нужно написать /help.\n"
-                     f"А для начала взаимодействия с ботом по вашему путешествию напишите /travel_help.\n",
+    bot.send_message(chat_id, 'Напиши <b>город</b>, о достопримечательностях 🏛 которого ты хочешь услышать.',
                      parse_mode='html',reply_markup=menu)
+    bot.register_next_step_handler(message, check_town_in_csv)
 
+def check_town_in_csv(message):
+    with open('city.csv', newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        town = message.text
+        for row in reader:
+            if row["name"] == town:
+                return True
+    return False
 
+def handle_message(message):
+    town = message.text
+    chat_id = message.from_user.id
+    csv_file = 'city.csv'
+
+    if check_town_in_csv(town, csv_file):
+        bot.send_message(chat_id, '<b>Нужный вам город найден в базе данных!</b>😃\nМы сохранили информацию о нём.',
+                     parse_mode='html',reply_markup=menu)
+        db.update_city(town, chat_id)
+    else:
+        bot.send_message(chat_id, "<b>Нужный вам город не найден в базе данных!</b>😥\n"
+                                  "Напишите команду /travel_help и укажите город заново.",
+                     parse_mode='html',reply_markup=menu)
+        
+        
+@bot.message_handler(commands=['get_weather'])
+def get_weather(message):
+    user_id = message.from_user.id
+    SYSTEM_PROMPT1 = [{'role': 'system', 'text': f'Расскажи о погоде на ближайшую неделю в городе под названием town '}]
+    ask_gpt(message, SYSTEM_PROMPT1)
 
 bot.polling()

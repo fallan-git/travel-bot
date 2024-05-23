@@ -1,9 +1,9 @@
 import json
-import logging
 import time
 from datetime import datetime
 import requests
 from config import LOGS, IAM_TOKEN_PATH
+import logging
 
 logging.basicConfig(filename=LOGS, level=logging.INFO,
                     format="%(asctime)s FILE: %(filename)s IN: %(funcName)s MESSAGE: %(message)s", filemode="w")
