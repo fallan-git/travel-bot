@@ -18,10 +18,7 @@ except FileNotFoundError:
 except Exception as e:
     logging.info(f"Произошла ошибка при чтении файла: {e}")
 
-
-
 db = Database()
-db.create_database()
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -37,7 +34,7 @@ def start(message):
     bot.send_message(chat_id,
                      f"<b>Привет {user_name}👋, это бот который поможет тебе в путешествиях.</b>\n\n"
                      f"Для более подробной информации нужно написать /help.\n"
-                     f"А для начала взаимодействия с ботом по вашему путешествию напишите /travel_help.\n",
+                     f"А для начала взаимодействия с ботом по вашему путешествию напишите /set_town и укажите город.\n",
                      parse_mode='html',reply_markup=menu)
 
 @bot.message_handler(commands=['help'])
@@ -49,7 +46,8 @@ def help(message):
                      f"Данный бот 🤖 использует технологии <b>YaGPT</b>.\n\n"
                      f"/support_of_сreators - команда благодаря которой можно получить информацию о создателях бота.\n"
                      f"/travel_help - получить информацию о достопримечательностях города и о том как сегодня одеться.\n"
-                     f"/town_history - узнать историю города\n\n"
+                     f"/town_history - узнать историю города\n"
+                     f"/set_town - команда для указания нужного вам города, без неё не работают другие команды.\n\n"
                      f"Ограничение по пользователям бота - {MAX_USERS}\n"
                      f"Ограничение токенов для пользователя - {MAX_USER_GPT_TOKENS}\n"
                      f"Ограничение токенов в ответе GPT - {MAX_GPT_TOKENS}\n",
@@ -73,7 +71,7 @@ def support_of_сreators(message):
                      f"Telegram - <code>@fallangg</code>\n",
                      parse_mode='html',reply_markup=menu)
 
-@bot.message_handler(commands=['travel_help'])
+@bot.message_handler(commands=['set_town'])
 def get_town(message):
     chat_id = message.from_user.id
     user_name = message.from_user.first_name
@@ -112,7 +110,8 @@ def get_weather(message):
     chat_id = message.from_user.id
     PROMPT = [{'role': 'system', 'text': f'Расскажи о погоде на ближайшую неделю в городе под названием '}]
     city = db.get_city(chat_id)
-    if
+    if city == None:
+
     otvet = ask_gpt(city, PROMPT)
     bot.send_message(chat_id, f"<b>{otvet}</b>",
                      parse_mode='html',reply_markup=menu)
