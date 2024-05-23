@@ -1,11 +1,24 @@
 import logging
 import telebot
+import requests
 from keyboard import menu, helpkey
-from secret import TOKEN
-from config import MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS, LOGS
+from secret import TOKEN, folder_id
+from config import (MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS, LOGS, IAM_TOKEN_PATH, TOKENIZE_URL,
+                    GPT_MODEL, GPT_URL)
 from database import Database
-from gpt import ask_gpt
 import csv
+
+IAM_TOKEN = ''
+
+try:
+    with open(IAM_TOKEN_PATH, 'r') as file:
+        IAM_TOKEN = file.read()
+except FileNotFoundError:
+    logging.info(f"Файл c IAM_TOKEN не найден.")
+except Exception as e:
+    logging.info(f"Произошла ошибка при чтении файла: {e}")
+
+
 
 db = Database()
 db.create_database()
@@ -96,8 +109,56 @@ def handle_message(message):
         
 @bot.message_handler(commands=['get_weather'])
 def get_weather(message):
-    user_id = message.from_user.id
-    SYSTEM_PROMPT1 = [{'role': 'system', 'text': f'Расскажи о погоде на ближайшую неделю в городе под названием town '}]
-    ask_gpt(message, SYSTEM_PROMPT1)
+    chat_id = message.from_user.id
+    PROMPT = [{'role': 'system', 'text': f'Расскажи о погоде на ближайшую неделю в городе под названием '}]
+    city = db.get_city(chat_id)
+    if
+    otvet = ask_gpt(city, PROMPT)
+    bot.send_message(chat_id, f"<b>{otvet}</b>",
+                     parse_mode='html',reply_markup=menu)
+
+def count_gpt_tokens(messages):
+    headers = {
+        'Authorization': f'Bearer {IAM_TOKEN}',
+        'Content-Type': 'application/json'
+    }
+    data = {
+        'modelUri': f"gpt://{folder_id}/yandexgpt-lite",
+        "messages": messages
+    }
+    try:
+        response = requests.post(url=TOKENIZE_URL, json=data, headers=headers).json()['tokens']
+        return len(response)
+    except Exception as e:
+        logging.error(e)
+        return 0
+
+
+def ask_gpt(messages, SYSTEM_PROMPT):
+    headers = {
+        'Authorization': f'Bearer {IAM_TOKEN}',
+        'Content-Type': 'application/json'
+    }
+    data = {
+        'modelUri': f"gpt://{folder_id}/{GPT_MODEL}",
+        "completionOptions": {
+            "stream": False,
+            "temperature": 0.7,
+            "maxTokens": 100
+        },
+        "messages": SYSTEM_PROMPT + messages
+    }
+    try:
+        response = requests.post(GPT_URL, headers=headers, json=data)
+        if response.status_code != 200:
+            return False, f"Ошибка GPT. Статус-код: {response.status_code}", None
+        answer = response.json()['result']['alternatives'][0]['message']['text']
+        tokens_in_answer = count_gpt_tokens([{'role': 'assistant', 'text': answer}])
+        return True, answer, tokens_in_answer
+    except Exception as e:
+        logging.error(e)
+        return False, "Ошибка при обращении к GPT",  None
+
+
 
 bot.polling()

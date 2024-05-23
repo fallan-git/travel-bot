@@ -5,6 +5,7 @@ from Config_ import SYSTEM_PROMPT1, IAM_TOKEN, FOLDER_ID, TOKENIZE_URL, GPT_MODE
 import csv
 import telebot
 
+
 @bot.message_handler(commands=['get_town'])
 def get_town(message):
     user_id = message.from_user.id
