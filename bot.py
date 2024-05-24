@@ -8,15 +8,7 @@ from config import (MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS, LOGS, IAM_TO
 from database import Database
 import csv
 
-IAM_TOKEN = ''
-
-try:
-    with open(IAM_TOKEN_PATH, 'r') as file:
-        IAM_TOKEN = file.read()
-except FileNotFoundError:
-    logging.info(f"Файл c IAM_TOKEN не найден.")
-except Exception as e:
-    logging.info(f"Произошла ошибка при чтении файла: {e}")
+IAM_TOKEN = 't1.9euelZqencyXy5mLm4mblpXLms2Mxu3rnpWakZOMy8uYk4nJnZPIjovLiZHl8_dQK0JN-e9AMmx1_t3z9xBaP03570AybHX-zef1656VmpnKzp6VioqbnJeVk8qKypSO7_zF656VmpnKzp6VioqbnJeVk8qKypSOveuelZrMkY6Jx8mXx5vOlpiansablrXehpzRnJCSj4qLmtGLmdKckJKPioua0pKai56bnoue0oye.6BLtq5EqCiB5BT0FqIbSDhdBxyo9O8t_izA3_1KPQoroFT0c0R0DXYivpoEI6pftn1LFDMS8QbDOlFTvw4LQBw'
 
 db = Database()
 
