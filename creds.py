@@ -2,12 +2,8 @@ import json
 import time
 from datetime import datetime
 import requests
-from config import LOGS, IAM_TOKEN_PATH
+from config import IAM_TOKEN_PATH
 import logging
-
-logging.basicConfig(filename=LOGS, level=logging.INFO,
-                    format="%(asctime)s FILE: %(filename)s IN: %(funcName)s MESSAGE: %(message)s", filemode="w")
-
 
 def create_new_token():
     url = "http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token"
@@ -15,7 +11,7 @@ def create_new_token():
         "Metadata-Flavor": "Google"
     }
     try:
-        response = requests.get(url=url, headers=headers)
+        response = requests.get(url=url, headers=headers, timeout=5)  # Установите таймаут
         if response.status_code == 200:
             token_data = response.json()
 
@@ -26,6 +22,8 @@ def create_new_token():
             logging.info("Получен новый iam_token")
         else:
             logging.error(f"Ошибка получения iam_token. Статус-код: {response.status_code}")
+    except requests.exceptions.ConnectTimeout as e:
+        logging.error(f"Ошибка получения iam_token: {e}")
     except Exception as e:
         logging.error(f"Ошибка получения iam_token: {e}")
 

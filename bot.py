@@ -1,166 +1,418 @@
-import logging
-import telebot
-import requests
-from keyboard import menu, helpkey, token_small
-from secret import TOKEN, folder_id
-from config import (MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS, LOGS, IAM_TOKEN_PATH, TOKENIZE_URL,
-                    GPT_MODEL, GPT_URL)
+from telebot import TeleBot
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton, Message
+from keyboard import menu, helpkey, travelhelp
+import random
+from secret import TOKEN
+from config import (MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS)
 from database import Database
-import csv
-
-IAM_TOKEN = 't1.9euelZqencyXy5mLm4mblpXLms2Mxu3rnpWakZOMy8uYk4nJnZPIjovLiZHl8_dQK0JN-e9AMmx1_t3z9xBaP03570AybHX-zef1656VmpnKzp6VioqbnJeVk8qKypSO7_zF656VmpnKzp6VioqbnJeVk8qKypSOveuelZrMkY6Jx8mXx5vOlpiansablrXehpzRnJCSj4qLmtGLmdKckJKPioua0pKai56bnoue0oye.6BLtq5EqCiB5BT0FqIbSDhdBxyo9O8t_izA3_1KPQoroFT0c0R0DXYivpoEI6pftn1LFDMS8QbDOlFTvw4LQBw'
-
+from yandexgpt import ask_gpt
+bot = TeleBot(TOKEN)
 db = Database()
+#######################################################DatabaseFunction#########################################################
+def check_number_of_users(chat_id):
+    count = db.count_users(chat_id)
+    if count is None:
+        return None, "Ошибка при работе с БД"
+    if count > MAX_USERS:
+        return None, "Превышено максимальное количество пользователей"
+    return True, ""
 
-bot = telebot.TeleBot(TOKEN)
 
-logging.basicConfig(filename=LOGS, level=logging.DEBUG,
-                    format="%(asctime)s FILE: %(filename)s IN: %(funcName)s MESSAGE: %(message)s", filemode="w")
+######################################################MainFunctions#########################################################
 
 @bot.message_handler(commands=['start'])
 def start(message):
     chat_id = message.chat.id
     user_name = message.from_user.first_name
-    logging.info(f"{user_name} | {chat_id} - новый пользователь")
     db.add_user(chat_id)
     bot.send_message(chat_id,
                      f"<b>Привет {user_name}👋, это бот который поможет тебе в путешествиях.</b>\n\n"
                      f"Для более подробной информации нужно написать /help.\n"
                      f"А для начала взаимодействия с ботом по вашему путешествию напишите /set_town и укажите город.\n",
-                     parse_mode='html',reply_markup=menu)
+                     parse_mode='html',reply_markup=helpkey)
 
 @bot.message_handler(commands=['help'])
 def help(message):
     chat_id = message.chat.id
     user_name = message.from_user.first_name
-    logging.info(f"{user_name} | {chat_id} - выполнил команду help")
+
     bot.send_message(chat_id,
                      f"Данный бот 🤖 использует технологии <b>YaGPT</b>.\n\n"
-                     f"/support_of_сreators - команда благодаря которой можно получить информацию о создателях бота.\n"
-                     f"/travel_help - получить информацию о достопримечательностях города.\n"
-                     f"/town_history - узнать историю города\n"
-                     f"/set_town - команда для указания нужного вам города, без неё не работают другие команды.\n"
-                     f"/get_weather - узнать погоду в городе\n"
+                     f" /support_of_сreators - команда, благодаря которой можно получить информацию о создателях бота.\n"
+                     f" /interesting_facts - 10 Интересных фактов о стране.\n"
+                     f" /travel_help - получить информацию о достопримечательностях города.\n"
+                     f" /town_history - узнать историю города\n"
+                     f" /set_town - команда для указания нужного вам города, без неё не работают другие команды.\n"
+                     f" /set_country - команда для указания интересующей вас страны, без неё не работают другие команды.\n"   
                      f"Ограничение по пользователям бота - {MAX_USERS}\n"
                      f"Ограничение токенов для пользователя - {MAX_USER_GPT_TOKENS}\n"
                      f"Ограничение токенов в ответе GPT - {MAX_GPT_TOKENS}\n",
-                     parse_mode='html',reply_markup=helpkey)
+                     parse_mode='html', reply_markup=helpkey)
 
 @bot.message_handler(commands=['support_of_сreators'])
 def support_of_сreators(message):
     chat_id = message.chat.id
     user_name = message.from_user.first_name
-    logging.info(f"{user_name} | {chat_id} - выполнил команду support_of_сreators")
+
     bot.send_message(chat_id,
                      f"<b>Эти люди🧑🏼‍💻 работали над ботом, если потребуется помощь, можешь написать кому-то из них:</b>\n\n"
                      f"👨‍🎓<b>Марк</b>\n"
                      f"Discord - <code>lathanael.</code>\n"
-                     f"Telegram - ???\n"
+                     f"Telegram - @Ts_Mark1\n"
                      f"👨‍🎓<b>Алексей</b>\n"
                      f"Discord - <code>noverega10</code>\n"
-                     f"Telegram - ???\n"
+                     f"Telegram - @noverega\n"
                      f"🥷<b>Леонид</b>\n"
                      f"Discord - <code>fallan.</code>\n"
                      f"Telegram - <code>@fallangg</code>\n",
                      parse_mode='html',reply_markup=menu)
 
+@bot.message_handler(commands=['menu'])
+def menu(message):
+    bot.send_message(message.chat.id, 'Перевожу в меню...', reply_markup=helpkey)
+
+
+#####################################################GetParamsModule##########################################################
+
 @bot.message_handler(commands=['set_town'])
 def get_town(message):
     chat_id = message.chat.id
-    user_name = message.from_user.first_name
-    logging.info(f"{user_name} | {chat_id} - выполнил команду set_town")
-
     bot.send_message(chat_id, 'Напиши <b>город</b>, о котором мы будем говорить в дальнейшем..',
                      parse_mode='html',reply_markup=menu)
-    bot.register_next_step_handler(message, check_town_in_csv)
+    bot.register_next_step_handler(message, handle_message)
 
-def check_town_in_csv(message):
-    with open('city.csv', newline='') as csvfile:
-        reader = csv.DictReader(csvfile)
-        town = message.text
-        for row in reader:
-            if row["name"] == town:
-                return True
-    return False
-
-def handle_message(message):
-    town = message.text
-    chat_id = message.from_user.id
-    csv_file = 'city.csv'
-
-    if check_town_in_csv(town, csv_file):
-        bot.send_message(chat_id, '<b>Нужный вам город найден в базе данных!</b>😃\nМы сохранили информацию о нём.',
-                     parse_mode='html',reply_markup=menu)
-        db.update_city(town, chat_id)
-    else:
-        bot.send_message(chat_id, "<b>Нужный вам город не найден в базе данных!</b>😥\n"
-                                  "Напишите команду /travel_help и укажите город заново.",
-                     parse_mode='html',reply_markup=menu)
-        
-
-@bot.message_handler(commands=['travel_help'])
-def get_weather(message):
+@bot.message_handler(commands=['set_country'])
+def start_country(message):
     chat_id = message.chat.id
+    bot.send_message(chat_id, 'Напиши <b>интересующую страну</b>, о котором мы будем говорить в дальнейшем..',
+                     parse_mode='html', reply_markup=menu)
+    bot.register_next_step_handler(message, handle_message)
+
+
+####################################################GenerationModule###########################################################
+@bot.message_handler(commands=['city_restaurants'])
+def city_restaurants(message):
+    chat_id = message.chat.id
+
+    status_check_users, error_message = check_number_of_users(chat_id)
+    if not status_check_users:
+        bot.send_message(chat_id, error_message)
+        return
+
+    city = db.get_city(chat_id)
+    if city == None:
+        bot.send_message(chat_id, "<b>Вы не выбрали город, напишите /set_town!</b>😥\n",
+                         parse_mode='html', reply_markup=menu)
+        return
+    bot.send_message(chat_id, f'Выбранный город: {city}.\n Начинается генерация...')
+
+    PROMPT = [{'role': 'system',
+               'text': f'Расскажи подробно про самые популярные и интересные рестораны в городе {city}, Рассказ должен быть не менее чем в 1000 символов, тебе нужно уложиться в 1000 символов. В конце сделай завершающее предложение, не пиши никакой поясняющий текст от себя.'}]
+    user_tokens = db.get_tokens(chat_id)
+    if user_tokens < 200:
+        bot.send_message(chat_id, "<b>У вас нету токенов.</b>😥\n"
+                                  "Вам доступны команды: /help, /get_weather и /support_of_сreators",
+                         parse_mode='html', reply_markup=menu)
+        return
+    success, otvet, tokens_in_answer = ask_gpt(PROMPT)
+    if success:
+        bot.send_message(chat_id, f"<b>{otvet}</b>",
+                         parse_mode='html', reply_markup=helpkey)
+        db.update_history(otvet, chat_id)
+        db.update_tokens(tokens_in_answer, chat_id)
+@bot.message_handler(commands=['interesting_facts'])
+def facts(message):
+    chat_id = message.chat.id
+
+    status_check_users, error_message = check_number_of_users(chat_id)
+    if not status_check_users:
+        bot.send_message(chat_id, error_message)
+        return
+
+    score = db.get_score(chat_id)
+    if score < 2:
+        bot.send_message(chat_id, 'Как вы помните, у этой команды есть оплата - 2 Балла, \n'
+                                  f'Кол-во баллов: {score}'
+                                  f'Чтобы заработать баллы вам нужно поучаствовать в викторине  и ответить хотя бы 1 раз правильно. Чтобы начать викторину нажмите /travel_quiz', reply_markup=helpkey)
+        return
+    country = db.get_country(chat_id)
+    if country == None:
+        bot.send_message(chat_id, "<b>Вы не выбрали страну, напишите /set_country!</b>😥\n",
+                         parse_mode='html', reply_markup=menu)
+        return
+    bot.send_message(chat_id, f'Выбранная страна: {country}.\n Начинается генерация интересных фактов...')
+
+    PROMPT = [{'role': 'system',
+               'text': f'Расскажи 10 самых интересных фактов про страну {country}, не пиши никакой поясняющий текст от себя.'}]
+    user_tokens = db.get_tokens(chat_id)
+    if user_tokens < 200:
+        bot.send_message(chat_id, "<b>У вас нету токенов.</b>😥\n"
+                                  "Вам доступны команды: /help, /get_weather и /support_of_сreators, /travel_quiz",
+                         parse_mode='html', reply_markup=menu)
+        return
+    success, otvet, tokens_in_answer = ask_gpt(PROMPT)
+    if success:
+        bot.send_message(chat_id, f"<b>{otvet}</b>",
+                         parse_mode='html', reply_markup=helpkey)
+        db.update_tokens(tokens_in_answer, chat_id)
+@bot.message_handler(commands=['town_history'])
+def city_history(message):
+    chat_id = message.chat.id
+
+    status_check_users, error_message = check_number_of_users(chat_id)
+    if not status_check_users:
+        bot.send_message(chat_id, error_message)
+        return
+
     city = db.get_city(chat_id)
     if city == None:
         bot.send_message(chat_id, "<b>Вы не выбрали город, напишите /set_town!</b>😥\n",
                      parse_mode='html',reply_markup=menu)
         return
-    PROMPT = [{'role': 'system', 'text': f'Расскажи о главных достопримечательностях в городе под названием '}]
+    bot.send_message(chat_id, f'Выбранный город: {city}.\n Начинается генерация истории...')
+
+    PROMPT = [{'role': 'system', 'text': f'Расскажи историю города под названием {city}. Напиши этот рассказ не более чем на 1000 символов. В конце сделай завершающее предложение, не пиши никакой поясняющий текст от себя.'}]
     user_tokens = db.get_tokens(chat_id)
-    if user_tokens < 120:
+    if user_tokens < 200:
         bot.send_message(chat_id, "<b>У вас нету токенов.</b>😥\n"
                                   "Вам доступны команды: /help, /get_weather и /support_of_сreators",
-                     parse_mode='html',reply_markup=token_small)
+                     parse_mode='html',reply_markup=menu)
         return
-    success, otvet, tokens_in_answer = ask_gpt(city, PROMPT)
+    success, otvet, tokens_in_answer = ask_gpt(PROMPT)
     if success:
         bot.send_message(chat_id, f"<b>{otvet}</b>",
-                         parse_mode='html',reply_markup=menu)
+                         parse_mode='html',reply_markup=helpkey)
+        db.update_history(otvet, chat_id)
+        db.update_tokens(tokens_in_answer, chat_id)
+@bot.message_handler(commands=['travel_help'])
+def travel_help(message):
+    chat_id = message.chat.id
+
+    status_check_users, error_message = check_number_of_users(chat_id)
+    if not status_check_users:
+        bot.send_message(chat_id, error_message)
+        return
+
+    city = db.get_city(chat_id)
+    if city == None:
+        bot.send_message(chat_id, "<b>Вы не выбрали город, напишите /set_town!</b>😥\n",
+                     parse_mode='html',reply_markup=menu)
+        return
+    bot.send_message(chat_id, f'Выбранный город: {city}')
+
+    PROMPT = [{'role': 'system', 'text': f'Ты опытный путешественник и был во всех городах мира. Расскажи о главных достопримечательностях в городе под названием {city}. Напиши этот рассказ не более чем на 1000 символов. В конце сделай завершающее предложение, не пиши никакой поясняющий текст от себя.'}]
+    user_tokens = db.get_tokens(chat_id)
+    if user_tokens < 200:
+        bot.send_message(chat_id, "<b>У вас нету токенов.</b>😥\n"
+                                  "Вам доступны команды: /help, /get_weather и /support_of_сreators",
+                     parse_mode='html',reply_markup=menu)
+        return
+    success, otvet, tokens_in_answer = ask_gpt(PROMPT)
+    if success:
+        bot.send_message(chat_id, f"<b>{otvet}</b>",
+                         parse_mode='html',reply_markup=travelhelp)
+        db.update_answer(otvet, chat_id)
+        db.update_tokens(tokens_in_answer, chat_id)
+@bot.message_handler(commands=['continue'])
+def promtcontinue(message):
+    chat_id = message.chat.id
+
+    status_check_users, error_message = check_number_of_users(chat_id)
+    if not status_check_users:
+        bot.send_message(chat_id, error_message)
+        return
+
+    last_answer = db.get_answer(chat_id)
+    city = db.get_city(chat_id)
+
+    if city == None:
+        bot.send_message(chat_id, "<b>Вы не выбрали город, напишите /set_town!</b>😥\n",
+                     parse_mode='html',reply_markup=menu)
+        return
+
+    PROMPT = [{'role': 'system',
+               'text': f'Твой прошлый ответ: {last_answer}. не пиши никакой поясняющий текст от себя. Продолжи подробный рассказ про достопримечательности города {city} Расскажи подробно про самые интерессные и доступные достопримечательности города {city}. В конце сделай завершающее предложение, не пиши никакой поясняющий текст от себя.'}]
+    user_tokens = db.get_tokens(chat_id)
+    if user_tokens < 200:
+        bot.send_message(chat_id, "<b>У вас нету токенов.</b>😥\n"
+                                  "Вам доступны команды: /help, /get_weather и /support_of_сreators",
+                         parse_mode='html', reply_markup=menu)
+        return
+    success, otvet, tokens_in_answer = ask_gpt(PROMPT)
+    if success:
+        bot.send_message(chat_id, f"<b>{otvet}</b>",
+                         parse_mode='html', reply_markup=travelhelp)
+        db.update_answer(otvet, chat_id)
         db.update_tokens(tokens_in_answer, chat_id)
 
-def count_gpt_tokens(messages):
-    headers = {
-        'Authorization': f'Bearer {IAM_TOKEN}',
-        'Content-Type': 'application/json'
-    }
-    data = {
-        'modelUri': f"gpt://{folder_id}/yandexgpt-lite",
-        "messages": messages
-    }
-    try:
-        response = requests.post(url=TOKENIZE_URL, json=data, headers=headers).json()['tokens']
-        return len(response)
-    except Exception as e:
-        logging.error(e)
-        return 0
+
+####################################################FunctionsModule##########################################################
+def set_country(message):
+    chat_id = message.chat.id
+    country = message.text
+    town = db.get_city(chat_id)
+    user_name = message.from_user.first_name
+    tokens = db.get_tokens(chat_id)
+    score = db.get_score(chat_id)
+    if town in ['/set_town', '/travel_help', '/town_history', '/help', '/support_of_creators', '/set_country',
+                '/interesting_facts']:
+        bot.send_message(chat_id, 'При обработки этой команды вам стоит написать город. /set_town', reply_markup=menu)
+        return
+    else:
+        db.update_country(country, chat_id)
+        bot.send_message(chat_id, f'Вы успешно обновили город!\n'
+                                  f'Ваша анкета:\n'
+                                  f'Имя: {user_name}\n'
+                                  f'Чат_айди: {chat_id}\n'
+                                  f'Город: {town}\n'
+                                  f'Кол-во токенов: {tokens}\n'
+                                  f'Интересующая страна: {country}\n'
+                                  f'Кол-во баллов: {score}', reply_markup=helpkey)
+        return
+def handle_message(message):
+    town = message.text
+    user_name = message.from_user.first_name
+    chat_id = message.chat.id
+    tokens = db.get_tokens(chat_id)
+    score = db.get_score(chat_id)
+    country = db.get_country(chat_id)
+    if town in ['/set_town', '/travel_help', '/town_history', '/help', '/support_of_creators', '/set_country', '/interesting_facts']:
+        bot.send_message(chat_id, 'При обработки этой команды вам стоит написать город. /set_town', reply_markup=menu)
+        return
+    else:
+        db.update_city(town, chat_id)
+        bot.send_message(chat_id, f'Вы успешно обновили город!\n'
+                                  f'Ваша анкета:\n'
+                                  f'Имя: {user_name}\n'
+                                  f'Чат_айди: {chat_id}\n'
+                                  f'Город: {town}\n'
+                                  f'Кол-во токенов: {tokens}\n'
+                                  f'Интересующая страна: {country}\n'
+                                  f'Кол-во баллов: {score}', reply_markup=helpkey)
+        return
 
 
-def ask_gpt(messages, SYSTEM_PROMPT):
-    headers = {
-        'Authorization': f'Bearer {IAM_TOKEN}',
-        'Content-Type': 'application/json'
-    }
-    data = {
-        'modelUri': f"gpt://{folder_id}/{GPT_MODEL}",
-        "completionOptions": {
-            "stream": False,
-            "temperature": 0.7,
-            "maxTokens": 100
-        },
-        "messages": SYSTEM_PROMPT + messages
-    }
-    try:
-        response = requests.post(GPT_URL, headers=headers, json=data)
-        if response.status_code != 200:
-            return False, f"Ошибка GPT. Статус-код: {response.status_code}", None
-        answer = response.json()['result']['alternatives'][0]['message']['text']
-        tokens_in_answer = count_gpt_tokens([{'role': 'assistant', 'text': answer}])
-        return True, answer, tokens_in_answer
-    except Exception as e:
-        logging.error(e)
-        return False, "Ошибка при обращении к GPT",  None
+###################################################TravelQuizModule#########################################################
 
+questions = {
+    "Какой город называют Большим яблоком?": ["Нью-Йорк", "Лос-Анджелес", "Токио"],
+    "В каком городе находится Эйфелева башня?": ["Париж", "Лондон", "Рим"],
+    "Столицей какой страны является Берлин?": ["Германия", "Франция", "Италия"],
+    "В каком городе расположен Колизей?": ["Рим", "Афины", "Каир"],
+    "Какой город называют Городом мостов?": ["Венеция", "Амстердам", "Прага"],
+    "В каком городе находится статуя Христа-Искупителя?": ["Рио-де-Жанейро", "Буэнос-Айрес", "Лима"],
+    "Столицей какой страны является Москва?": ["Россия", "Украина", "Беларусь"],
+    "В каком городе находится самая высокая гора в мире?": ["Катманду", "Пекин", "Дели"],
+    "Какой город называют Городом каналов?": ["Амстердам", "Венеция", "Брюгге"],
+    "В каком городе расположен Букингемский дворец?": ["Лондон", "Париж", "Мадрид"],
+    "Какой город является крупнейшим по площади в мире?": ["Нью-Йорк", "Токио", "Шанхай"],
+    "Какой город называют Городом ветров?": ["Чикаго", "Лондон", "Париж"],
+    "В каком городе находится самый большой музей в мире?": ["Париж", "Лондон", "Вашингтон"],
+    "Какой город является столицей самой маленькой страны в мире?": ["Ватикан", "Монако", "Сан-Марино"],
+    "В каком городе находится самая высокая башня в мире?": ["Дубай", "Токио", "Шанхай"],
+    "Какой город называют Городом ангелов?": ["Лос-Анджелес", "Париж", "Лондон"],
+    "В каком городе находится самая большая площадь в мире?": ["Пекин", "Москва", "Токио"],
+    "Какой город является самым густонаселенным в мире?": ["Токио", "Шанхай", "Дели"],
+    "В каком городе находится самый старый университет в мире?": ["Оксфорд", "Кембридж", "Болонья"],
+    "Какой город называют Городом семи холмов?": ["Рим", "Стамбул", "Лиссабон"],
+    "В каком городе находится самый большой порт в мире?": ["Шанхай", "Сингапур", "Дубай"],
+    "Какой город называют Восточной Венецией?": ["Сучжоу", "Венеция", "Амстердам"],
+    "В каком городе находится самый большой аквариум в мире?": ["Атланта", "Дубай", "Токио"],
+    "Какой город называют Городом тысячи храмов?": ["Киото", "Бангкок", "Львов"],
+    "В каком городе находится самый большой небоскреб в мире?": ["Дубай", "Шанхай", "Токио"],
+    "Какой город называют Городом музыки?": ["Вена", "Париж", "Нью-Йорк"],
+    "В каком городе находится самая большая библиотека в мире?": ["Вашингтон", "Париж", "Лондон"],
+    "Какой город называют Городом огней?": ["Париж", "Лас-Вегас", "Дубай"],
+    "В каком городе находится самый большой парк в мире?": ["Нью-Йорк", "Лондон", "Токио"],
+    "Какой город называют Городом любви?": ["Париж", "Вена", "Рим"],
+    "В каком городе находится самый большой стадион в мире?": ["Пхеньян", "Барселона", "Лондон"],
+    "Какой город называют Городом небоскребов?": ["Нью-Йорк", "Токио", "Дубай"],
+    "В каком городе находится самый большой торговый центр в мире?": ["Дубай", "Пекин", "Шанхай"],
+    "Какой город называют Городом контрастов?": ["Мумбаи", "Рио-де-Жанейро", "Стамбул"],
+    "В каком городе находится самый большой океанариум в мире?": ["Атланта", "Дубай", "Токио"],
+    "Какой город называют Городом культуры?": ["Париж", "Лондон", "Вена"],
+    "В каком городе находится самый большой музей современного искусства в мире?": ["Нью-Йорк", "Париж", "Лондон"],
+    "Какой город называют Городом вечной весны?": ["Куньмин", "Мехико", "Мадрид"],
+    "В каком городе находится самая длинная улица в мире?": ["Торонто", "Лондон", "Париж"],
+    "Какой город называют Городом моды?": ["Париж", "Милан", "Лондон"],
+    "В каком городе находится самый большой зоопарк в мире?": ["Сан-Диего", "Лондон", "Пекин"],
+    "Какой город называют Городом технологий?": ["Токио", "Сан-Франциско", "Шанхай"],
+    "В каком городе находится самый большой ботанический сад в мире?": ["Лондон", "Париж", "Берлин"],
+    "Какой город называют Городом музеев?": ["Париж", "Лондон", "Вашингтон"],
+    "В каком городе находится самое большое колесо обозрения в мире?": ["Дубай", "Лондон", "Лас-Вегас"],
+    "Какой город называют Городом искусства?": ["Флоренция", "Париж", "Вена"],
+    "В каком городе находится самый большой тематический парк в мире?": ["Орландо", "Токио", "Шанхай"],
+    "Какой город называют Городом истории?": ["Рим", "Стамбул", "Афины"],
+    "В каком городе находится самый большой океанариум в мире?": ["Атланта", "Дубай", "Токио"],
+    "Какой город называют Городом фестивалей?": ["Эдинбург", "Рио-де-Жанейро", "Ноттинг-Хилл"],
+    "В каком городе находится самый большой аквапарк в мире?": ["Дубай", "Орландо", "Токио"],
+    "Какой город называют Городом пляжей?": ["Рио-де-Жанейро", "Майами", "Барселона"],
+    "В каком городе находится самый большой парк развлечений в мире?": ["Орландо", "Париж", "Токио"],
+    "Какой город называют Городом гор?": ["Кейптаун", "Рио-де-Жанейро", "Сан-Франциско"],
+    "В каком городе находится самая высокая гора в мире?": ["Катманду", "Пекин", "Дели"],
+    "Какой город называют Городом дождей?": ["Лондон", "Сиэтл", "Ванкувер"],
+    "В каком городе находится самый большой водопад в мире?": ["Виктория", "Ниагарский", "Игуасу"],
+    "Какой город называют Городом туманов?": ["Сан-Франциско", "Лондон", "Амстердам"],
+    "В каком городе находится самая длинная река в мире?": ["Каир", "Хартум", "Асуан"],
+    "Какой город называют Городом пустынь?": ["Дубай", "Каир", "Лас-Вегас"],
+    "В каком городе находится самый большой лес в мире?": ["Амазонка", "Конго", "Тайга"],
+    "Какой город называют Городом джунглей?": ["Рио-де-Жанейро", "Киншаса", "Манаус"],
+    "В каком городе находится самый большой остров в мире?": ["Гренландия", "Мадагаскар", "Новая Гвинея"],
+    "Какой город называют Городом вулканов?": ["Неаполь", "Киото", "Портленд"],
+    "В каком городе находится самый большой гейзер в мире?": ["Йеллоустоун", "Долина гейзеров", "Исландия"],
+    "Какой город называют Городом гейзеров?": ["Долина гейзеров", "Йеллоустоун", "Исландия"]
+}
+
+def generate_quiz():
+    # Выбрать случайный вопрос
+    question = random.choice(list(questions.keys()))
+    # Получить варианты ответов
+    answers = questions[question]
+    # Перемешать варианты ответов
+    random.shuffle(answers)
+    return question, answers
+
+
+def check_answer(question, text):
+    correct_answer = questions[question][0]
+    print(correct_answer)
+    return text == correct_answer
+
+@bot.message_handler(commands=['travel_quiz'])
+def start_quiz(message):
+    global question
+    chat_id = message.chat.id
+    # Отправить приветственное сообщение
+    bot.send_message(chat_id, text="Давай поиграем в викторину про города мира.")
+
+    # Сгенерировать первый вопрос
+    question, answers = generate_quiz()
+
+    # Отправить вопрос и варианты ответов
+    keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+    bot.send_message(chat_id, text=question)
+    for answer in answers:
+        keyboard.add(KeyboardButton(answer))
+    bot.send_message(chat_id,'Ваш ответ: ', reply_markup=keyboard)
+    bot.register_next_step_handler(message, handle_message_for_quiz)
+
+def handle_message_for_quiz(message):
+    chat_id = message.chat.id
+    score = db.get_score(chat_id)
+    text = message.text
+    print(text)
+
+    if text in questions[question]:
+        correct = check_answer(question, text)
+
+        if correct:
+            bot.send_message(chat_id, text="Правильно! Сыграем снова?\n Для нового вопроса нажми /travel_quiz", reply_markup=helpkey)
+            db.update_score(score+2, chat_id)
+        else:
+            bot.send_message(chat_id, f"Неправильно. Правильный ответ: {questions[text][0]}.  Сыграем снова?\n Для нового вопроса нажми /travel_quiz", reply_markup=helpkey)
+
+    else:
+        bot.send_message(chat_id, text="Пожалуйста, ответьте на вопрос, выбрав один из вариантов.")
 
 
 bot.polling()

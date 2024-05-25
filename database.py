@@ -1,7 +1,7 @@
 import sqlite3
 
 class Database:
-    def __init__(self, db_name='TravelBot.db'):
+    def __init__(self, db_name='TravelBotHope2.db'):
         self.conn = sqlite3.connect(db_name, check_same_thread=False)
         self.cursor = self.conn.cursor()
         self.create_database()
@@ -9,21 +9,46 @@ class Database:
     def create_database(self):
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS tokens (
                                 chat_id INTEGER PRIMARY KEY,
-                                message TEXT,
                                 answer TEXT,
                                 city TEXT,
                                 tokens INTEGER,
-                                history TEXT
+                                history TEXT,
+                                score INTEGER,
+                                country TEXt
                             )''')
 
 
-    def add_user(self, chat_id, tokens = 5000, answer=None, city=None, history=None):
-        self.cursor.execute("INSERT OR IGNORE INTO tokens (chat_id, tokens, answer, city, history) VALUES (?, ?, ?, ?, ?)",
-                            (chat_id, tokens, answer, city, history))
+    def add_user(self, chat_id, tokens = 5000, answer=None, city=None, history=None, score=0, country=None):
+        self.cursor.execute("INSERT OR IGNORE INTO tokens (chat_id, tokens, answer, city, history, score, country) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                            (chat_id, tokens, answer, city, history, score, country))
         self.conn.commit()
+
+    def count_users(self, chat_id):
+        try:
+            self.cursor.execute('''SELECT COUNT(DISTINCT chat_id) FROM tokens WHERE chat_id <> ?''', (chat_id,))
+            count = self.cursor.fetchone()[0]
+            return count
+        except Exception as e:
+            print(e)
+            return None
 
     ###-------------------------------------------------------------------------------------------------------------------------###
     ###-------------------------------------------------------------------------------------------------------------------------###
+
+    def get_country(self, chat_id):
+        self.cursor.execute("SELECT country FROM tokens WHERE chat_id = ?", (chat_id,))
+        result = self.cursor.fetchone()
+        if result:
+            return result[0]
+        else:
+            return None
+    def get_score(self, chat_id):
+        self.cursor.execute("SELECT score FROM tokens WHERE chat_id = ?", (chat_id,))
+        result = self.cursor.fetchone()
+        if result:
+            return result[0]
+        else:
+            return None
 
     def get_tokens(self, chat_id):
         self.cursor.execute("SELECT tokens FROM tokens WHERE chat_id = ?", (chat_id,))
@@ -41,6 +66,16 @@ class Database:
         else:
             return None
 
+    def get_answer(self, chat_id):
+        self.cursor.execute("SELECT answer FROM tokens WHERE chat_id = ?", (chat_id,))
+        result = self.cursor.fetchone()
+        if result:
+            return result[0]
+        else:
+            return None
+
+
+
     ###-------------------------------------------------------------------------------------------------------------------------###
     ###-------------------------------------------------------------------------------------------------------------------------###
 
@@ -49,6 +84,15 @@ class Database:
             f"UPDATE tokens SET answer = '{answer}' WHERE chat_id = ?", (chat_id,))
         self.conn.commit()
 
+    def update_country(self, country, chat_id):
+        self.cursor.execute(
+            f"UPDATE tokens SET country = '{country}' WHERE chat_id = ?", (chat_id,))
+        self.conn.commit()
+
+    def update_score(self, score, chat_id):
+        self.cursor.execute(
+            f"UPDATE tokens SET score = '{score}' WHERE chat_id = ?", (chat_id,))
+        self.conn.commit()
 
     def update_city(self, city, chat_id):
         self.cursor.execute(
