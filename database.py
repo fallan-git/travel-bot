@@ -1,7 +1,7 @@
 import sqlite3
 
 class Database:
-    def __init__(self, db_name='TravelBotHope2.db'):
+    def __init__(self, db_name='LastHope2.db'):
         self.conn = sqlite3.connect(db_name, check_same_thread=False)
         self.cursor = self.conn.cursor()
         self.create_database()
@@ -18,7 +18,7 @@ class Database:
                             )''')
 
 
-    def add_user(self, chat_id, tokens = 5000, answer=None, city=None, history=None, score=0, country=None):
+    def add_user(self, chat_id, tokens = 5000, answer=None, city=None, history=None, score=0, country="Россия"):
         self.cursor.execute("INSERT OR IGNORE INTO tokens (chat_id, tokens, answer, city, history, score, country) VALUES (?, ?, ?, ?, ?, ?, ?)",
                             (chat_id, tokens, answer, city, history, score, country))
         self.conn.commit()

@@ -38,12 +38,13 @@ def help(message):
 
     bot.send_message(chat_id,
                      f"Данный бот 🤖 использует технологии <b>YaGPT</b>.\n\n"
-                     f" /support_of_сreators - команда, благодаря которой можно получить информацию о создателях бота.\n"
-                     f" /interesting_facts - 10 Интересных фактов о стране.\n"
-                     f" /travel_help - получить информацию о достопримечательностях города.\n"
-                     f" /town_history - узнать историю города\n"
-                     f" /set_town - команда для указания нужного вам города, без неё не работают другие команды.\n"
-                     f" /set_country - команда для указания интересующей вас страны, без неё не работают другие команды.\n"   
+                     f" /support_of_сreators - Команда, благодаря которой можно получить информацию о создателях бота.\n"
+                     f" /travel_quiz - Команда для начала викторины.\n"
+                     f" /travel_help - Получить информацию о достопримечательностях города.\n"
+                     f" /town_history - Узнать историю города\n"
+                     f" /set_town - Команда для указания нужного вам города, без неё не работают другие команды.\n"
+                     f" /set_country - Команда для указания интересующей вас страны, без неё не работают другие команды.\n"
+                     f" interesting_facts - 9 Интересных фактов о стране пользователя,\n команда работает, если пользователь имеет не меньше 2 баллов в викторине.\n За 1 пропуск к команде берется 2 балла"   
                      f"Ограничение по пользователям бота - {MAX_USERS}\n"
                      f"Ограничение токенов для пользователя - {MAX_USER_GPT_TOKENS}\n"
                      f"Ограничение токенов в ответе GPT - {MAX_GPT_TOKENS}\n",
@@ -78,15 +79,15 @@ def menu(message):
 def get_town(message):
     chat_id = message.chat.id
     bot.send_message(chat_id, 'Напиши <b>город</b>, о котором мы будем говорить в дальнейшем..',
-                     parse_mode='html',reply_markup=menu)
+                     parse_mode='html')
     bot.register_next_step_handler(message, handle_message)
 
 @bot.message_handler(commands=['set_country'])
 def start_country(message):
     chat_id = message.chat.id
     bot.send_message(chat_id, 'Напиши <b>интересующую страну</b>, о котором мы будем говорить в дальнейшем..',
-                     parse_mode='html', reply_markup=menu)
-    bot.register_next_step_handler(message, handle_message)
+                     parse_mode='html')
+    bot.register_next_step_handler(message, set_country)
 
 
 ####################################################GenerationModule###########################################################
@@ -132,8 +133,8 @@ def facts(message):
     score = db.get_score(chat_id)
     if score < 2:
         bot.send_message(chat_id, 'Как вы помните, у этой команды есть оплата - 2 Балла, \n'
-                                  f'Кол-во баллов: {score}'
-                                  f'Чтобы заработать баллы вам нужно поучаствовать в викторине  и ответить хотя бы 1 раз правильно. Чтобы начать викторину нажмите /travel_quiz', reply_markup=helpkey)
+                                  f'Кол-во баллов: {score}\n'
+                                  f'Чтобы заработать баллы вам нужно поучаствовать в викторине  и ответить хотя бы 1 раз правильно.\n Чтобы начать викторину нажмите /travel_quiz', reply_markup=helpkey)
         return
     country = db.get_country(chat_id)
     if country == None:
@@ -143,7 +144,7 @@ def facts(message):
     bot.send_message(chat_id, f'Выбранная страна: {country}.\n Начинается генерация интересных фактов...')
 
     PROMPT = [{'role': 'system',
-               'text': f'Расскажи 10 самых интересных фактов про страну {country}, не пиши никакой поясняющий текст от себя.'}]
+               'text': f'Расскажи 9 самых интересных фактов про страну {country}Ты должен сделать текст не более чем на 900 символов. Сделай завершающий интересный факт, не пиши никакой поясняющий текст от себя.'}]
     user_tokens = db.get_tokens(chat_id)
     if user_tokens < 200:
         bot.send_message(chat_id, "<b>У вас нету токенов.</b>😥\n"
@@ -155,6 +156,7 @@ def facts(message):
         bot.send_message(chat_id, f"<b>{otvet}</b>",
                          parse_mode='html', reply_markup=helpkey)
         db.update_tokens(tokens_in_answer, chat_id)
+        db.update_score(score-2, chat_id)
 @bot.message_handler(commands=['town_history'])
 def city_history(message):
     chat_id = message.chat.id
@@ -171,7 +173,7 @@ def city_history(message):
         return
     bot.send_message(chat_id, f'Выбранный город: {city}.\n Начинается генерация истории...')
 
-    PROMPT = [{'role': 'system', 'text': f'Расскажи историю города под названием {city}. Напиши этот рассказ не более чем на 1000 символов. В конце сделай завершающее предложение, не пиши никакой поясняющий текст от себя.'}]
+    PROMPT = [{'role': 'system', 'text': f'Расскажи историю города под названием {city}. Напиши подробный рассказ не более чем на 900 символов. В конце сделай завершающее предложение, не пиши никакой поясняющий текст от себя.'}]
     user_tokens = db.get_tokens(chat_id)
     if user_tokens < 200:
         bot.send_message(chat_id, "<b>У вас нету токенов.</b>😥\n"
@@ -196,47 +198,16 @@ def travel_help(message):
     city = db.get_city(chat_id)
     if city == None:
         bot.send_message(chat_id, "<b>Вы не выбрали город, напишите /set_town!</b>😥\n",
-                     parse_mode='html',reply_markup=menu)
+                     parse_mode='html', reply_markup=menu)
         return
     bot.send_message(chat_id, f'Выбранный город: {city}')
 
-    PROMPT = [{'role': 'system', 'text': f'Ты опытный путешественник и был во всех городах мира. Расскажи о главных достопримечательностях в городе под названием {city}. Напиши этот рассказ не более чем на 1000 символов. В конце сделай завершающее предложение, не пиши никакой поясняющий текст от себя.'}]
+    PROMPT = [{'role': 'system', 'text': f'Ты опытный путешественник и был во всех городах мира. Не пиши никакой поясняющий текст от себя. Продолжи подробный рассказ про достопримечательности города {city} Расскажи подробно про самые интерессные и доступные достопримечательности города {city}. В конце сделай завершающее предложение, не пиши никакой поясняющий текст от себя. Сделай текст не более чем на 900 символов'}]
     user_tokens = db.get_tokens(chat_id)
     if user_tokens < 200:
         bot.send_message(chat_id, "<b>У вас нету токенов.</b>😥\n"
                                   "Вам доступны команды: /help, /get_weather и /support_of_сreators",
-                     parse_mode='html',reply_markup=menu)
-        return
-    success, otvet, tokens_in_answer = ask_gpt(PROMPT)
-    if success:
-        bot.send_message(chat_id, f"<b>{otvet}</b>",
-                         parse_mode='html',reply_markup=travelhelp)
-        db.update_answer(otvet, chat_id)
-        db.update_tokens(tokens_in_answer, chat_id)
-@bot.message_handler(commands=['continue'])
-def promtcontinue(message):
-    chat_id = message.chat.id
-
-    status_check_users, error_message = check_number_of_users(chat_id)
-    if not status_check_users:
-        bot.send_message(chat_id, error_message)
-        return
-
-    last_answer = db.get_answer(chat_id)
-    city = db.get_city(chat_id)
-
-    if city == None:
-        bot.send_message(chat_id, "<b>Вы не выбрали город, напишите /set_town!</b>😥\n",
-                     parse_mode='html',reply_markup=menu)
-        return
-
-    PROMPT = [{'role': 'system',
-               'text': f'Твой прошлый ответ: {last_answer}. не пиши никакой поясняющий текст от себя. Продолжи подробный рассказ про достопримечательности города {city} Расскажи подробно про самые интерессные и доступные достопримечательности города {city}. В конце сделай завершающее предложение, не пиши никакой поясняющий текст от себя.'}]
-    user_tokens = db.get_tokens(chat_id)
-    if user_tokens < 200:
-        bot.send_message(chat_id, "<b>У вас нету токенов.</b>😥\n"
-                                  "Вам доступны команды: /help, /get_weather и /support_of_сreators",
-                         parse_mode='html', reply_markup=menu)
+                     parse_mode='html', reply_markup=menu)
         return
     success, otvet, tokens_in_answer = ask_gpt(PROMPT)
     if success:
@@ -244,7 +215,6 @@ def promtcontinue(message):
                          parse_mode='html', reply_markup=travelhelp)
         db.update_answer(otvet, chat_id)
         db.update_tokens(tokens_in_answer, chat_id)
-
 
 ####################################################FunctionsModule##########################################################
 def set_country(message):
@@ -256,11 +226,11 @@ def set_country(message):
     score = db.get_score(chat_id)
     if town in ['/set_town', '/travel_help', '/town_history', '/help', '/support_of_creators', '/set_country',
                 '/interesting_facts']:
-        bot.send_message(chat_id, 'При обработки этой команды вам стоит написать город. /set_town', reply_markup=menu)
+        bot.send_message(chat_id, 'При обработки этой команды вам стоит написать страну. /set_country', reply_markup=menu)
         return
     else:
         db.update_country(country, chat_id)
-        bot.send_message(chat_id, f'Вы успешно обновили город!\n'
+        bot.send_message(chat_id, f'Вы успешно обновили страну!\n'
                                   f'Ваша анкета:\n'
                                   f'Имя: {user_name}\n'
                                   f'Чат_айди: {chat_id}\n'
@@ -375,7 +345,6 @@ def generate_quiz():
 
 def check_answer(question, text):
     correct_answer = questions[question][0]
-    print(correct_answer)
     return text == correct_answer
 
 @bot.message_handler(commands=['travel_quiz'])
@@ -390,7 +359,7 @@ def start_quiz(message):
 
     # Отправить вопрос и варианты ответов
     keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-    bot.send_message(chat_id, text=question)
+    bot.send_message(chat_id, f"Давай поиграем в викторину про города мира. Вопрос: {question}")
     for answer in answers:
         keyboard.add(KeyboardButton(answer))
     bot.send_message(chat_id,'Ваш ответ: ', reply_markup=keyboard)
@@ -400,7 +369,7 @@ def handle_message_for_quiz(message):
     chat_id = message.chat.id
     score = db.get_score(chat_id)
     text = message.text
-    print(text)
+
 
     if text in questions[question]:
         correct = check_answer(question, text)
@@ -409,7 +378,7 @@ def handle_message_for_quiz(message):
             bot.send_message(chat_id, text="Правильно! Сыграем снова?\n Для нового вопроса нажми /travel_quiz", reply_markup=helpkey)
             db.update_score(score+2, chat_id)
         else:
-            bot.send_message(chat_id, f"Неправильно. Правильный ответ: {questions[text][0]}.  Сыграем снова?\n Для нового вопроса нажми /travel_quiz", reply_markup=helpkey)
+            bot.send_message(chat_id, f"Неправильно. Правильный ответ: {questions[question][0]}.  Сыграем снова?\n Для нового вопроса нажми /travel_quiz", reply_markup=helpkey)
 
     else:
         bot.send_message(chat_id, text="Пожалуйста, ответьте на вопрос, выбрав один из вариантов.")
