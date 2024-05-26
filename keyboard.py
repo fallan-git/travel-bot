@@ -7,7 +7,7 @@ menu3 = types.KeyboardButton("/set_town")
 menu6 = types.KeyboardButton("/set_country")
 menu7 = types.KeyboardButton("/travel_quiz")
 menu8 = types.KeyboardButton("/weather")
-menu.add(menu1, menu3, menu6, menu2,  menu7)
+menu.add(menu1, menu3, menu6, menu2,  menu7, menu8)
 
 helpkey = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
 help1 = types.KeyboardButton("/set_town")

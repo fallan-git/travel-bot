@@ -33,7 +33,8 @@ def start(message):
                      f"Для более подробной информации нужно написать /help.\n"
                      f"Команда /menu переведет вас в режим со всеми комнадами бота. "
                      f"Команда /weather покажет вам погоду в вашем городе\n"
-                     f"А для начала взаимодействия со мной по вашему путешествию напишите /set_town и укажите город, также вам следует узаать интересующую вас страну через команду /set_country. Затем вам станет доступны другие команды, их нужно использовать \n",
+                     f"А для начала взаимодействия со мной по вашему путешествию напишите /set_town и укажите город, также вам следует узаать интересующую вас страну через команду /set_country. Затем вам станет доступны другие команды. "
+                     f"Я любитель разных викторин и я составил викторину про разные города мира, правильный ответ - +2 балла вам и возможность воспользоваться командой /interesting_facts\n",
                      parse_mode='html',reply_markup=helpkey)
 
 @bot.message_handler(commands=['help'])
@@ -44,7 +45,7 @@ def help(message):
                      f"Чтобы общатсья со мной, вы должны использовать эти команды.\n\n"
                      f" /weather - Команда для получения погоды в городе пользователя"
                      f" /support_of_creators - Команда, благодаря которой можно получить информацию о создателях бота. \n"
-                     f" /travel_quiz - Команда для начала викторины. \n"
+                     f" /travel_quiz - Команда для начала викторины по разным городам мира. \n"
                      f" /travel_help - Получить информацию о достопримечательностях города. \n"
                      f" /town_history - Узнать историю города\n "
                      f" /set_town - Команда для указания нужного вам города, без неё не работают другие команды. \n"
@@ -227,7 +228,7 @@ def get_weather(message):
 def weather(message):
     api_key = '621832e1e20c2758886536204ce51448'
     city = message.text
-    base_url = 'http://api.openweathermap.org/data/2.5/weather'
+    base_url = 'http://api.openweathermap.org/data/2.5/weather?'
     geolocator = Nominatim(user_agent="my_app")
     location = geolocator.geocode(city)
     lon = str(location.longitude)
@@ -244,7 +245,6 @@ def weather(message):
             pressure = main['pressure']
             humidity = main['humidity']
             bot.send_message(message.from_user.id, f'Погода в городе {city} на ближайшее время: Температура: {temperature}+-5 градусов, Давление: {pressure}Мбар, Влажность: {humidity}')
-
 
 ####################################################FunctionsModule##########################################################
 def set_country(message):
@@ -367,7 +367,7 @@ def generate_quiz():
     question = random.choice(list(questions.keys()))
     # Получить варианты ответов
     answers = questions[question]
-    # Перемешать варианты ответов
+
     return question, answers
 
 
