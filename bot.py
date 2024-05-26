@@ -2,7 +2,7 @@ from telebot import TeleBot
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, Message
 from keyboard import menu, helpkey, travelhelp
 import random
-from secret import TOKEN
+from super_secret import TOKEN
 from config import (MAX_GPT_TOKENS, MAX_USER_GPT_TOKENS, MAX_USERS)
 from database import Database
 from yandexgpt import ask_gpt

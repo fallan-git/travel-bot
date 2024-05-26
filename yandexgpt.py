@@ -1,7 +1,7 @@
 from token import *
 import requests
 from config import TOKENIZE_URL, GPT_MODEL, GPT_URL
-from secret import *
+from super_secret import *
 
 
 def count_gpt_tokens(messages):
