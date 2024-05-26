@@ -18,7 +18,7 @@ class Database:
                             )''')
 
 
-    def add_user(self, chat_id, tokens = 5000, answer=None, city=None, history=None, score=0, country="Россия"):
+    def add_user(self, chat_id, tokens = 1000, answer=None, city=None, history=None, score=0, country="Россия"):
         self.cursor.execute("INSERT OR IGNORE INTO tokens (chat_id, tokens, answer, city, history, score, country) VALUES (?, ?, ?, ?, ?, ?, ?)",
                             (chat_id, tokens, answer, city, history, score, country))
         self.conn.commit()

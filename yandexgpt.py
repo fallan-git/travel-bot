@@ -2,11 +2,9 @@ from token import *
 import requests
 from config import TOKENIZE_URL, GPT_MODEL, GPT_URL
 from secret import *
-from creds import *
 
 
 def count_gpt_tokens(messages):
-    IAM_TOKEN = get_creds()
     headers = {
         'Authorization': f'Bearer {IAM_TOKEN}',
         'Content-Type': 'application/json'
@@ -23,7 +21,6 @@ def count_gpt_tokens(messages):
         return 0
 
 def ask_gpt(SYSTEM_PROMPT):
-    IAM_TOKEN = get_creds()
     headers = {
         'Authorization': f'Bearer {IAM_TOKEN}',
         'Content-Type': 'application/json'
