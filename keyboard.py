@@ -19,7 +19,7 @@ help8 = types.KeyboardButton("/interesting_facts")
 help9 = types.KeyboardButton("/city_restaurants")
 help10 = types.KeyboardButton("/weather")
 help6 = types.KeyboardButton("/support")
-helpkey.add(help1, help2, help7, help4, help3, help6, help8, help9)
+helpkey.add(help1, help2, help7, help4, help3, help6, help8, help9, help10)
 
 travelhelp = types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
 t2 = types.KeyboardButton('/menu')

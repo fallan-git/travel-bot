@@ -224,6 +224,27 @@ def get_weather(message):
     user_id = message.from_user.id
     msg = bot.send_message(user_id, 'Напиши город, на который хочешь узнать погоду')
     bot.register_next_step_handler(msg, weather)
+def weather(message):
+    api_key = '621832e1e20c2758886536204ce51448'
+    city = message.text
+    base_url = 'http://api.openweathermap.org/data/2.5/weather'
+    geolocator = Nominatim(user_agent="my_app")
+    location = geolocator.geocode(city)
+    lon = str(location.longitude)
+    lat = str(location.latitude)
+
+    complete_url = f"{base_url}lat={lat}&lon={lon}&exclude=hourly,daily&appid={api_key}"
+    response = requests.get(complete_url)
+    if response.status_code == 200:
+        data = response.json()
+        if 'main' in data and 'weather' in data:
+            main = data['main']
+            weather = data['weather']
+            temperature = (main['temp'] * 0.1) // 2
+            pressure = main['pressure']
+            humidity = main['humidity']
+            bot.send_message(message.from_user.id, f'Погода в городе {city} на ближайшее время: Температура: {temperature}+-5 градусов, Давление: {pressure}Мбар, Влажность: {humidity}')
+
 
 ####################################################FunctionsModule##########################################################
 def set_country(message):
@@ -269,27 +290,6 @@ def handle_message(message):
                                   f'Интересующая страна: {country}\n'
                                   f'Кол-во баллов: {score}', reply_markup=helpkey)
         return
-
-def weather(message):
-    api_key = '621832e1e20c2758886536204ce51448'
-    city = message.text
-    base_url = 'http://api.openweathermap.org/data/2.5/weather'
-    geolocator = Nominatim(user_agent="my_app")
-    location = geolocator.geocode(city)
-    lon = str(location.longitude)
-    lat = str(location.latitude)
-
-    complete_url = f"{base_url}lat={lat}&lon={lon}&exclude=hourly,daily&appid={api_key}"
-    response = requests.get(complete_url)
-    if response.status_code == 200:
-        data = response.json()
-        if 'main' in data and 'weather' in data:
-            main = data['main']
-            weather = data['weather']
-            temperature = (main['temp'] * 0.1) // 2
-            pressure = main['pressure']
-            humidity = main['humidity']
-            bot.send_message(message.from_user.id, f'Погода в городе {city} на ближайшее время: Температура: {temperature}+-5 градусов, Давление: {pressure}Мбар, Влажность: {humidity}')
 
 ###################################################TravelQuizModule#########################################################
 
@@ -368,7 +368,6 @@ def generate_quiz():
     # Получить варианты ответов
     answers = questions[question]
     # Перемешать варианты ответов
-    random.shuffle(answers)
     return question, answers
 
 
